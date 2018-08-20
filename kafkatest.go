@@ -25,7 +25,7 @@ import (
 var log = stdlog.New(os.Stderr, "LOG> ", stdlog.Lshortfile|stdlog.Lmicroseconds)
 
 // the URL of the kafka server to which to connect (any should do if they are up)
-var KAFKA_BROKER = flag.String("kafka", "kafka-000-staging.mistsys.net:6667", "KAFKA_BROKER the <hostname>:<port number> of one of the kafka brokers")
+var KAFKA_BROKERS = flag.String("kafka", "kafka-000-staging.mistsys.net:6667", "KAFKA_BROKERS the <hostname>:<port number> comma separated list of kafka brokers")
 var KAFKA_TOPIC = flag.String("topic", "user_profile_test", "KAFKA_TOPIC the kafka topic to which to publish and subscribe")
 var NUM_ITERATIONS = flag.Int("iterations", 100, "NUM_ITERATIONS number of messages to publish to each partition")
 
@@ -66,7 +66,7 @@ func main() {
 	}
 
 	// no URL means no kafka client
-	if KAFKA_BROKER == nil || *KAFKA_BROKER == "" {
+	if KAFKA_BROKERS == nil || *KAFKA_BROKERS == "" {
 		fmt.Printf("ERROR: kafka broker URL must be specified\n")
 		return
 	}
@@ -89,9 +89,10 @@ func main() {
 	conf.ChannelBufferSize = *CHANNEL_BUFFER_SIZE
 	fmt.Printf("Kafka client's Config %+v\n", conf)
 
-	cl, err := sarama.NewClient([]string{*KAFKA_BROKER}, conf)
+	brokers := strings.Split(*KAFKA_BROKERS, ",")
+	cl, err := sarama.NewClient(brokers, conf)
 	if err != nil {
-		fmt.Printf("ERROR creating kafka client to %q: %s", *KAFKA_BROKER, err)
+		fmt.Printf("ERROR creating kafka client to %q: %s", *KAFKA_BROKERS, err)
 		return
 	}
 	defer cl.Close()
