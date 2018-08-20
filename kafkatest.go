@@ -45,6 +45,8 @@ var MAX_OPEN_REQUESTS = flag.Int("max-open-requests", 5, "kafka consumer max out
 var CONSUME_ONLY = flag.Bool("consume-only", false, "only run the kafka consumer half")
 var PUBLISH_ONLY = flag.Bool("publish-only", false, "only run the kafka publisher half")
 
+var MESSAGE_SIZE = flag.Int("message-size", 128, "message size in bytes.")
+
 // time at which we started publishing (or the time of the 1st received message if we are just a consumer)
 var pub_start time.Time
 
@@ -88,6 +90,7 @@ func main() {
 	conf.Producer.Partitioner = sarama.NewRoundRobinPartitioner
 	conf.ChannelBufferSize = *CHANNEL_BUFFER_SIZE
 	fmt.Printf("Kafka client's Config %+v\n", conf)
+	fmt.Printf("Message size: %d\n", *MESSAGE_SIZE)
 
 	brokers := strings.Split(*KAFKA_BROKERS, ",")
 	cl, err := sarama.NewClient(brokers, conf)
@@ -206,12 +209,7 @@ func publish(cl sarama.Client, num_partitions int, wg *sync.WaitGroup) {
 	var i uint64
 	var j = 1
 	for i = 0; i < N; i++ {
-		value := make([]byte, 16)
-		binary.BigEndian.PutUint64(value, uint64(time.Now().UnixNano()))
-		binary.BigEndian.PutUint64(value[8:], i) // out of curiosity, to more easily pick out which messages are which in an strace or pktcap
-		value[8] = byte('n')                     // same, use a uniqish string to ID the messages
-		value[9] = byte('s')
-		value[10] = byte('d')
+		value := make([]byte, *MESSAGE_SIZE)
 		msg := sarama.ProducerMessage{Topic: *KAFKA_TOPIC, Value: sarama.ByteEncoder(value)}
 		select {
 		case input <- &msg:
